@@ -1,0 +1,289 @@
+/*重點變項整理與資料篩選*/
+/*為了避免交叉細格數不足5人的問題，改將19類出生世代轉為16類出生世代，
+將c1905+c1910+c1915+c1920=c1920，故c1920為1924年以前出生的世代，
+亦即從1995年開始就超過70歲的民眾*/
+data a;
+set work. allapc5;
+if cohort=1905 then ncohort=1920;
+if cohort=1910 then ncohort=1920;
+if cohort=1915 then ncohort=1920;
+if cohort=1920 then ncohort=1920;
+if cohort=1925 then ncohort=1925;
+if cohort=1930 then ncohort=1930;
+if cohort=1935 then ncohort=1935;
+if cohort=1940 then ncohort=1940;
+if cohort=1945 then ncohort=1945;
+if cohort=1950 then ncohort=1950;
+if cohort=1955 then ncohort=1955;
+if cohort=1960 then ncohort=1960;
+if cohort=1965 then ncohort=1965;
+if cohort=1970 then ncohort=1970;
+if cohort=1975 then ncohort=1975;
+if cohort=1980 then ncohort=1980;
+if cohort=1985 then ncohort=1985;
+if cohort=1990 then ncohort=1990;
+if cohort=1995 then ncohort=1995;
+label ncohort="ncohort(16類出生世代)";
+run;
+proc freq data=a;
+table ncohort;
+run;
+ODS PDF FILE="C:\Users\YISHAN\Desktop\ncohort(16類)Xperiod(1995-2015年).PDF";  /*世代時期交叉表*/
+ODS TAGSETS.EXCELXP FILE='C:\Users\YISHAN\Desktop\ncohort(16類)Xperiod(1995-2015年).XLS' STYLE=STATISTICAL;
+proc freq data=a;
+table ncohort*period;
+title"ncohort(16類) x period(1995-2015年)";
+run;
+ODS TAGSETS.EXCELXP CLOSE;
+ODS PDF CLOSE;
+
+data c;  /*重新把ncohort分4類*/
+set work. b;
+drop cohort_f4;
+run;
+
+data d;
+set work. c;
+if ncohort=1920 then ncohort4=1;
+if ncohort=1925 then ncohort4=1;
+if ncohort=1930 then ncohort4=1;
+if ncohort=1935 then ncohort4=1;
+if ncohort=1940 then ncohort4=2;
+if ncohort=1945 then ncohort4=2;
+if ncohort=1950 then ncohort4=2;
+if ncohort=1955 then ncohort4=3;
+if ncohort=1960 then ncohort4=3;
+if ncohort=1965 then ncohort4=3;
+if ncohort=1970 then ncohort4=4;
+if ncohort=1975 then ncohort4=4;
+if ncohort=1980 then ncohort4=4;
+if ncohort=1985 then ncohort4=4;
+if ncohort=1990 then ncohort4=4;
+if ncohort=1995 then ncohort4=4;
+label ncohort4="ncohort4出生世代四類(1:c1920-35/ 2:c1940-50/ 3:c1955-65/ 4:c1970-95)";
+run;
+proc freq data=d;
+table ncohort4;
+run;
+
+data e;
+set work. d;
+drop f_cohort;
+run;
+
+/*就寢時間再加入:適當/非適當的變項*/
+data b;
+set work. a;
+if sleeptime=1 then twosleeptime=1;
+if sleeptime=2 then twosleeptime=2;
+if sleeptime=3 then twosleeptime=2;
+label twosleeptime="twosleeptime就寢時間(1適當/2非適當)";
+run;
+proc freq data=b;
+table sleeptime twosleeptime;
+run;
+
+
+
+/*核心分析:Cross-Classified Random Effects Model(CCREM)*/
+/*1.APC獨立影響效果*/
+/*1-1.APC-->就寢時間sleeptime*/
+ODS TAGSETS.EXCELXP FILE='C:\Users\YISHAN\Desktop\CCREM1-1a_APC&就寢時間(正常3類).XLS' STYLE=STATISTICAL;
+ODS PDF FILE="C:\Users\YISHAN\Desktop\CCREM1-1a_APC&就寢時間(正常3類).PDF";
+data CCREM1_1a;    
+set work. b;
+proc glimmix data=CCREM1_1a noitprint;   
+class period ncohort sleeptime;
+model sleeptime=age_c / solution CL oddsratio dist=mult link=glogit;
+random intercept / subject=period group=sleeptime solution;
+random intercept / subject=ncohort group=sleeptime solution;
+covtest GLM / WALD;
+NLOPTIONS TECHNIQUE=NRRIDG ;
+title "CCREM1-1a_APC&就寢時間(正常3類)";
+run;
+ODS PDF CLOSE;
+ODS TAGSETS.EXCELXP CLOSE;
+
+
+/*1-2.APC-->熬夜類型stayuplate*/
+ODS TAGSETS.EXCELXP FILE='C:\Users\YISHAN\Desktop\CCREM1-2_APC&熬夜類型.XLS' STYLE=STATISTICAL;
+ODS PDF FILE="C:\Users\YISHAN\Desktop\CCREM1-2_APC&熬夜類型.PDF";
+data CCREM1_2;    
+set work. b;
+proc glimmix data=CCREM1_2 noitprint;   
+class period ncohort stayuplate;
+model stayuplate=age_c / solution CL oddsratio dist=mult link=glogit;
+random intercept / subject=period group=stayuplate solution;
+random intercept / subject=ncohort group=stayuplate solution;
+covtest GLM / WALD;
+NLOPTIONS TECHNIQUE=NRRIDG ;
+title "CCREM1-2 APC&熬夜類型";
+run;
+ODS PDF CLOSE;
+ODS TAGSETS.EXCELXP CLOSE;
+
+
+/*1-3.APC-->睡眠長度sleeplength*/
+ODS TAGSETS.EXCELXP FILE='C:\Users\YISHAN\Desktop\CCREM1-3_APC&睡眠長度.XLS' STYLE=STATISTICAL;
+ODS PDF FILE="C:\Users\YISHAN\Desktop\CCREM1-3_APC&睡眠長度.PDF";
+data CCREM1_3;    
+set work. b;
+proc glimmix data=CCREM1_3 noitprint;   
+class period ncohort sleeplength;
+model sleeplength=age_c / solution CL oddsratio dist=mult link=glogit;
+random intercept / subject=period group=sleeplength solution;
+random intercept / subject=ncohort group=sleeplength solution;
+covtest GLM / WALD;
+NLOPTIONS TECHNIQUE=NRRIDG ;
+title "CCREM1-3 APC&睡眠長度";
+run;
+ODS PDF CLOSE;
+ODS TAGSETS.EXCELXP CLOSE;
+
+
+/*2.APC淨影響效果(加入控制變項)*/
+/*2-1.APC控-->就寢時間sleeptime*/
+ODS TAGSETS.EXCELXP FILE='C:\Users\YISHAN\Desktop\CCREM2-1a_APC控&就寢時間(正常3類).XLS' STYLE=STATISTICAL;
+ODS PDF FILE="C:\Users\YISHAN\Desktop\CCREM2-1a_APC控&就寢時間(正常3類).PDF";
+data CCREM2_1a;    
+set work. allapc8;
+proc glimmix data=CCREM2_1a noitprint;   
+class period ncohort sleeptime;
+model sleeptime=age_c dsex ms dfi fi work / solution CL oddsratio dist=mult link=glogit;
+random intercept / subject=period group=sleeptime solution;
+random intercept age_c / subject=ncohort group=sleeptime solution;
+covtest GLM / WALD;
+NLOPTIONS TECHNIQUE=NRRIDG; 
+title "CCREM2-1a_APC控&就寢時間(正常3類)";
+run;
+ODS PDF CLOSE;
+ODS TAGSETS.EXCELXP CLOSE;
+
+
+/*2-2.APC控-->熬夜類型stayuplate*/
+ODS TAGSETS.EXCELXP FILE='C:\Users\YISHAN\Desktop\CCREM2-2_APC控&熬夜類型.XLS' STYLE=STATISTICAL;
+ODS PDF FILE="C:\Users\YISHAN\Desktop\CCREM2-2_APC控&熬夜類型.PDF";
+data CCREM2_2;    
+set work. allapc7;
+proc glimmix data=CCREM2_2 noitprint;   
+class period ncohort stayuplate;
+model stayuplate=age_c dsex ms dfi fi work / solution CL oddsratio dist=mult link=glogit;
+random intercept / subject=period group=stayuplate solution;
+random intercept age_c peiod / subject=ncohort group=stayuplate solution;
+covtest GLM / WALD;
+NLOPTIONS TECHNIQUE=NRRIDG; 
+title "CCREM2-2 APC控&熬夜類型";
+run;
+ODS PDF CLOSE;
+ODS TAGSETS.EXCELXP CLOSE;
+
+/*2-3.APC控-->睡眠長度(類別)sleeplength*/
+ODS TAGSETS.EXCELXP FILE='C:\Users\YISHAN\Desktop\CCREM2-3_APC控&睡眠長度.XLS' STYLE=STATISTICAL;
+ODS PDF FILE="C:\Users\YISHAN\Desktop\CCREM2-3_APC控&睡眠長度.PDF";
+data CCREM2_3a;    
+set work. allapc7;
+proc glimmix data=CCREM2_3a noitprint;   
+class period ncohort sleeplength;
+model sleeplength=age_c dsex ms dfi fi work  / solution CL oddsratio dist=mult link=glogit;
+random intercept / subject=period group=sleeplength solution;
+random intercept / subject=ncohort group=sleeplength solution;
+covtest GLM / WALD;
+NLOPTIONS TECHNIQUE=NRRIDG; 
+title "CCREM2-3a APC控&睡眠長度";
+run;
+ODS PDF CLOSE;
+ODS TAGSETS.EXCELXP CLOSE;
+
+
+ODS TAGSETS.EXCELXP FILE='C:\Users\YISHAN\Desktop\CCREM2-3a_APC控ST&睡眠長度.XLS' STYLE=STATISTICAL;
+ODS PDF FILE="C:\Users\YISHAN\Desktop\CCREM2-3a_APC控ST&睡眠長度.PDF";
+data CCREM2_3a;    
+set work. allapc7;
+proc glimmix data=CCREM2_3a noitprint;   
+class period ncohort sleeplength;
+model sleeplength=age_c DST_O DST_X dsex ms dfi fi work  / solution CL oddsratio dist=mult link=glogit;
+random intercept / subject=period group=sleeplength solution;
+random intercept / subject=ncohort group=sleeplength solution;
+covtest GLM / WALD;
+NLOPTIONS TECHNIQUE=NRRIDG; 
+title "CCREM2-3a APC控st&睡眠長度";
+run;
+ODS PDF CLOSE;
+ODS TAGSETS.EXCELXP CLOSE;
+
+
+ODS TAGSETS.EXCELXP FILE='C:\Users\YISHAN\Desktop\CCREM2-3b_APC控SUL&睡眠長度.XLS' STYLE=STATISTICAL;
+ODS PDF FILE="C:\Users\YISHAN\Desktop\CCREM2-3b_APC控SUL&睡眠長度.PDF";
+data CCREM2_3b;    
+set work. allapc7;
+proc glimmix data=CCREM2_3b noitprint;   
+class period ncohort sleeplength;
+model sleeplength=age_c DSUL_N DSUL_L DSUL_H dsex ms dfi fi work / solution CL oddsratio dist=mult link=glogit;
+random intercept / subject=period group=sleeplength solution;
+random intercept / subject=ncohort group=sleeplength solution;
+covtest GLM / WALD;
+NLOPTIONS TECHNIQUE=NRRIDG; 
+title "CCREM2-3b APC控sul&睡眠長度";
+run;
+ODS PDF CLOSE;
+ODS TAGSETS.EXCELXP CLOSE;
+
+/*2-4. APC控-->睡眠長度(連續)sleeplength*/
+data allapc8; /*新增年齡平方項*/
+set work. allapc7;
+age2=age_c*age_c;
+label age2="age2年齡平方(age_c的平方)";
+run;
+proc freq data=allapc8;
+table age_c age2;
+run;
+
+
+ODS TAGSETS.EXCELXP FILE='C:\Users\YISHAN\Desktop\CCREM2-4APC控&連續睡眠長度.XLS' STYLE=STATISTICAL;
+ODS PDF FILE="C:\Users\YISHAN\Desktop\CCREM2-4APC控&連續睡眠長度.PDF";
+data CCREM2_4;       
+set work. allapc8;       
+proc glimmix data=CCREM2_4 noitprint; 
+class period ncohort ;
+model sleephr=age_c age2 dsex ms dfi fi work / solution CL oddsratio dist=N link=IDENTITY;
+random intercept / subject=period solution;
+random intercept / subject=ncohort solution;
+covtest GLM / WALD; 
+NLOPTIONS TECHNIQUE=NRRIDG;  
+title "CCREM2-4APC控&連續睡眠長度"; 
+run;               
+ODS PDF CLOSE;
+ODS TAGSETS.EXCELXP CLOSE;
+
+ODS TAGSETS.EXCELXP FILE='C:\Users\YISHAN\Desktop\CCREM2-4a APC控ST&連續睡眠長度.XLS' STYLE=STATISTICAL;
+ODS PDF FILE="C:\Users\YISHAN\Desktop\CCREM2-4a APC控ST&連續睡眠長度.PDF";
+data CCREM2_4a;       
+set work. allapc8;       
+proc glimmix data=CCREM2_4a noitprint; 
+class period ncohort ;
+model sleephr=age_c  age2 DST_O DST_X dsex ms dfi fi work / solution CL oddsratio dist=N link=IDENTITY;
+random intercept / subject=period solution;
+random intercept / subject=ncohort solution;
+covtest GLM / WALD; 
+NLOPTIONS TECHNIQUE=NRRIDG;  
+title "CCREM2-4aAPC控ST&連續睡眠長度"; 
+run;               
+ODS PDF CLOSE;
+ODS TAGSETS.EXCELXP CLOSE;
+
+
+ODS TAGSETS.EXCELXP FILE='C:\Users\YISHAN\Desktop\CCREM2-4b APC控SUL&連續睡眠長度.XLS' STYLE=STATISTICAL;
+ODS PDF FILE="C:\Users\YISHAN\Desktop\CCREM2-4b APC控SUL&連續睡眠長度.PDF";
+data CCREM2_4b;       
+set work. allapc8;       
+proc glimmix data=CCREM2_4b noitprint; 
+class period ncohort ;
+model sleephr=age_c  age2 DSUL_N DSUL_L DSUL_H dsex ms dfi fi work / solution CL oddsratio dist=N link=IDENTITY;
+random intercept / subject=period solution;
+random intercept / subject=ncohort solution;
+covtest GLM / WALD; 
+NLOPTIONS TECHNIQUE=NRRIDG;  
+title "CCREM2-4b_APC控SUL&連續睡眠長度"; 
+run;               
+ODS PDF CLOSE;
+ODS TAGSETS.EXCELXP CLOSE;
