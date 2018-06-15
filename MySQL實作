@@ -1,0 +1,63 @@
+/* SQL(Structured Query Language查詢資料庫語言) 結業實作*/
+/*使用關聯式資料庫MySQL*/
+
+/*1.SQL基礎實作: 從world資料庫中的country表格裡找出、查詢不同國家的資料*/
+/*1-1: 查詢東亞國家*/
+SELECT Name, Continent, Region /*找出特定欄位Name, Continent, Region，到時結果也只會列出這三個欄位的結果*/
+FROM world.country
+WHERE Continent='Asia' AND Region='Eastern Asia';
+
+/*1-2: 查詢西班牙、義大利和馬爾他這三個國家*/
+SELECT Name, Continent
+FROM world.country
+WHERE Name IN ('Spain', 'Italy', 'Malta');
+
+/*1-3: 查詢中國、印尼、印度和美國這四個國家的人口及人口密度 */
+SELECT Name, Population, Population/SurfaceArea AS Density
+FROM world.country
+WHERE Name IN ('China','Indonesia','India','United States');
+
+
+/*2.SQL進階實作: 從world資料庫中的country表格裡查詢以下資料*/
+/*2-1: 查詢亞洲、歐洲和南美洲的總人口數 */
+SELECT Continent, SUM(Population) AS Sum_of_Population
+FROM world.country
+WHERE Continent IN ('Asia', 'Europe', 'South America')
+GROUP BY Continent;
+
+/*2-2: 查詢總人口數最多的洲別 */
+SELECT Continent, MAX(Population)
+FROM world.country
+GROUP BY Continent;
+
+/*2-3:找出跟Kiribati或Falkland Islands 屬於同洲的國家*/
+SELECT Name,Continent
+	FROM world.country
+    WHERE Continent IN (      
+		SELECT Continent
+		FROM world.country
+		WHERE Name IN ('Kiribati', 'Falkland Islands'));  
+
+/* 2-4*/
+SELECT left_tbl.Name as City, right_tbl.Name as Country, right_tbl.Continent
+FROM(                
+	SELECT *            
+    FROM world.city    
+    WHERE CountryCode='TWN') left_tbl
+LEFT JOIN(
+	SELECT *
+    FROM world.country
+    WHERE Code='TWN') right_tbl
+ON left_tbl.CountryCode = right_tbl.Code;
+
+/* 2-5*/ 
+SELECT left_tbl.Name as City, right_tbl.Name as Country, right_tbl.Continent
+FROM(
+	SELECT *
+    FROM world.city
+    WHERE CountryCode IN ('TWN','USA')) left_tbl
+LEFT JOIN(
+	SELECT *
+    FROM world.country
+    WHERE Code IN ('TWN','USA')) right_tbl
+ON left_tbl.CountryCode = right_tbl.Code; 
