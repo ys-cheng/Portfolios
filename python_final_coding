@@ -1,0 +1,29 @@
+#Python應用於基礎資料分析-簡單迴歸分析simple Linear Regression-預測氣溫與冰棒銷售量
+
+import numpy as np
+import matplotlib.pyplot as plt
+temperatures = np.array([29, 28, 34, 31, 25, 29, 32, 31, 24, 33, 25, 31, 26, 30]) 
+ice_pop_sales = np.array([80, 65, 96, 85, 58, 64, 80, 75, 58, 92, 52, 75, 65, 85])
+
+from sklearn.linear_model import LinearRegression #載入線性迴歸模組，訓練並建立線性模型
+lm = LinearRegression() #lm: linear model #自變數:氣溫temperatures/依變數:冰棒銷量ice_pop_sales
+lm.fit(np.reshape(temperatures, (len(temperatures), 1)),
+       np.reshape(ice_pop_sales, (len(ice_pop_sales), 1)))
+print('係數=%.3f'%(lm.coef_)) # 印出迴歸係數
+print('截距=%.3f'%(lm.intercept_))# 印出截距
+
+predict1 = np.array([30]) #測量實際氣溫，預測30度時冰棒會賣出多少量 
+psales1 = lm.predict(np.reshape(predict1, (len(predict1), 1)))
+predict2 = np.array([15]) #預測氣溫15度時冰棒會賣出多少量
+psales2 = lm.predict(np.reshape(predict2, (len(predict2), 1)))
+print('氣溫30度時預測的冰棒銷量為%.3f'%(psales1)) # 印出氣溫30度時所預測的冰棒銷量
+print('氣溫15度時預測的冰棒銷量為%.3f'%(psales2)) # 印出氣溫15度時所預測的冰棒銷量
+
+#開始繪製散佈圖(scatter plot)
+plt.scatter(temperatures, ice_pop_sales, color='blue') 
+plt.plot(temperatures, lm.predict(np.reshape(temperatures, (len(temperatures), 1))),
+         color='black', linewidth=1.25)
+plt.plot(predict1, psales1, color = 'red', marker = 's', markersize = 7)
+plt.xlabel('temperatures')  #xlablel=x軸文字/ylabel=y軸文字
+plt.ylabel('ice_pop_sales')
+plt.show()
