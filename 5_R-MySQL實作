@@ -1,0 +1,94 @@
+# 用R進行SQL操作-->
+
+# 1.Tidyverse_dplyr實作:
+library(DBI) #匯入world資料庫中的country和city資料
+con <- dbConnect(RMySQL::MySQL(), 
+                 dbname = "world",
+                 host = "rsqltrain.ced04jhfjfgi.ap-northeast-1.rds.amazonaws.com",
+                 port = 3306,
+                 user = "trainstudent",
+                 password = "csietrain")
+country <- dbReadTable(con, "country")
+city <- dbReadTable(con, "city")
+
+# 1-1:依照洲別統計各洲最多的人口數遞減排序，並將人口數為零的結果刪去
+country %>%
+  group_by(Continent) %>%
+  summarise(maxPop=max(Population)) %>%
+  filter(maxPop>0) %>%   
+  select(Continent, maxPop) %>%
+  arrange(desc(maxPop))  
+
+# 1-2:將 WORLD.COUNTRY 刪除南極洲後依照洲別計算 GNP 中位數並遞減排序
+country %>%
+  group_by(Continent) %>%
+  summarise(median_gnp=median(GNP)) %>%
+  filter(Continent != "Antarctica") %>%
+  select(Continent, median_gnp) %>%
+  arrange(desc(median_gnp))                                  
+
+# 1-3:顯示這幾個國家的首都人口數，遞增排序
+
+#這部分是先試做出Taipei,Peking,Tokyo和Seoul這4個首都人口數的遞增排序
+city %>%
+  group_by(Name) %>%
+  filter(Name %in% c("Taipei","Peking","Tokyo","Seoul")) %>%
+  select(Name, Population) %>%
+  arrange(Population)  #r本身若沒加入desc(遞減排序指令)即跑出遞增排序
+
+#緊接著是試做出聯結
+#左表格 
+country_name <- dbGetQuery(
+  con, statement = "SELECT Name as Country, Code
+  FROM country 
+  WHERE Code in ('TWN', 'CHN', 'JPN', 'KOR')")
+
+#右表格
+capital_pop <- dbGetQuery(
+  con, statement = "SELECT Name as Captital, Population, CountryCode 
+  FROM city 
+  WHERE CountryCode in ('TWN', 'CHN', 'JPN', 'KOR') AND Name in ('Taipei','Peking','Tokyo','Seoul')
+  GROUP BY Name
+  ORDER BY Population ASC
+  ")
+                                                    
+
+#做全外部聯結  
+join <- full_join(
+  country_name, 
+  capital_pop, 
+  by = c("Code" = "CountryCode"), 
+  arrange(Population))
+
+#最後結束時中斷資料庫的聯結
+dbDisconnect(con)
+
+
+
+# 2.Tidyverse_ggplot2作業:
+
+# 2-1:繪製 2007 年的氣泡圖（size 設為 pop）
+install.packages("plotly")
+library(plotly)
+
+gapminder_2007 <- gapminder %>% filter(year == 2007)
+
+bubbleplot_2007 <- ggplot(gapminder_2007, aes(x=gdpPercap, y=lifeExp, colour=continent, size=pop)) +
+  geom_point() +
+  theme_minimal() +
+  ggtitle("wealth vs. health") +
+  xlab("Wealth") + ylab("Health") #+
+  #scale_x_log10()   這邊先不調整scale，才會輸出跟老師您指定的結果一樣   
+
+bubbleplot_2007       
+
+
+
+# 2-2:繪製東北亞國家 gdpPercap 的線圖
+gapminder_gdp <- gapminder %>%
+  filter(country %in% c("China", "Japan", "Korea, Rep.", "Taiwan"))
+
+multi_lines <- ggplot(gapminder_gdp, aes(x=year, y=gdpPercap, color=country)) +
+  geom_line()
+
+multi_lines
